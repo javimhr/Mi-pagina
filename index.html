@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Untitled</title>
+    
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rifa.Pe | Sorteo Diario</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] },
+                    colors: {
+                        brand: { bg: '#0f172a', card: '#1e293b', primary: '#8b5cf6', accent: '#f59e0b', success: '#22c55e', danger: '#ef4444' }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'ticket-appear': 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        popIn: { '0%': { transform: 'scale(0.5)', opacity: '0' }, '100%': { transform: 'scale(1)', opacity: '1' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            background-image: radial-gradient(circle at 50% 0%, #2e1065 0%, #0f172a 60%);
+            color: #ffffff;
+            padding-bottom: 140px; 
+            -webkit-tap-highlight-color: transparent;
+            user-select: none; 
+        }
+
+        /* Inputs - Diseño Original */
+        .input-dark {
+            background-color: #1e293b; border: 1px solid #334155; color: white;
+            padding: 12px 12px 12px 40px; border-radius: 10px; width: 100%; font-size: 14px; outline: none; transition: border-color 0.2s;
+        }
+        .input-dark:focus { border-color: #8b5cf6; }
+        .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        
+        .search-input {
+            background: #1e293b; border: 1px solid #334155; padding: 8px 12px 8px 35px;
+            border-radius: 20px; font-size: 13px; width: 100%; color: white; outline: none;
+        }
+        .search-input:focus { border-color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.1); }
+
+        /* Botones - Diseño Original */
+        .btn-number {
+            height: 44px; background-color: #1e293b; border: 1px solid #334155;
+            border-radius: 8px; color: #94a3b8; font-weight: 700; font-size: 14px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.1s;
+        }
+        .btn-number:active { transform: scale(0.95); }
+
+        .btn-selected {
+            background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+            color: white !important; border: none !important;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5); transform: scale(1.05); z-index: 10;
+        }
+        
+        .btn-highlight {
+            border-color: #f59e0b !important; background-color: #451a03 !important;
+            color: #f59e0b !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+            transform: scale(1.1); z-index: 20;
+        }
+
+        .btn-sold {
+            background-color: #0f172a !important; color: #334155 !important;
+            border-color: #1e293b !important; text-decoration: line-through;
+            opacity: 0.5; cursor: not-allowed;
+        }
+
+        /* Estilo Modo Admin - Venta Manual */
+        .admin-mode-active .btn-sold { 
+            cursor: pointer; opacity: 1; 
+            border: 2px solid #ef4444 !important; 
+            color: #ef4444 !important; 
+            background-color: #450a0a !important;
+            text-decoration: none;
+        }
+        .admin-mode-active header { border-bottom: 2px solid #ef4444; }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+        }
+
+        .progress-bar-container {
+            background: #1e293b; height: 6px; border-radius: 4px; overflow: hidden;
+            margin-bottom: 12px; border: 1px solid #334155;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            transition: width 1s ease-in-out; width: 0%;
+        }
+
+        /* Ticket Dorado (El que te gustó) */
+        .golden-ticket {
+            background: linear-gradient(135deg, #FFF7D1 0%, #FFD700 50%, #B8860B 100%);
+            color: #451a03;
+            border: 1px solid #FFF;
+            box-shadow: 0 10px 40px -10px rgba(245, 158, 11, 0.6);
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+        .golden-ticket-stub {
+            border-right: 2px dashed #451a03;
+            background-color: rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="sfx-pop" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3"></audio>
+    <audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+
+    <header class="fixed top-0 w-full z-40 bg-[#0f172a]/90 backdrop-blur-md border-b border-white/5 shadow-lg transition-colors">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2 select-none cursor-pointer" id="logo-trigger" onclick="adminTrigger()">
+                <div class="w-8 h-8 bg-brand-primary rounded flex items-center justify-center text-white font-bold shadow-lg transition-transform active:scale-90">R</div>
+                <h1 class="text-lg font-bold text-white tracking-wide">Rifa<span class="text-brand-primary">.Pe</span></h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="toggleMute()" class="text-slate-500 hover:text-white transition-colors">
+                    <i id="mute-icon" data-lucide="volume-2" class="w-5 h-5"></i>
+                </button>
+                <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-600 animate-pulse"></div>
+            </div>
+        </div>
+        
+        <div id="admin-bar" class="hidden bg-red-900/95 text-white text-[10px] font-bold flex justify-between items-center px-4 py-2 uppercase tracking-wide shadow-lg border-b border-red-500 backdrop-blur-md">
+            <span class="flex items-center gap-1"><i data-lucide="shield" class="w-3 h-3"></i> MODO ADMIN</span>
+            <div class="flex gap-3">
+                <span>V: <span id="admin-sold-count">0</span></span>
+                <span class="bg-black/30 px-2 rounded text-brand-accent">S/ <span id="admin-revenue">0.00</span></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto pt-20 px-4">
+        
+        <div class="relative bg-gradient-to-br from-indigo-900 to-slate-900 rounded-2xl p-6 text-center border border-white/10 shadow-2xl mb-8 overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-brand-primary/30 blur-[50px] rounded-full"></div>
+            <div class="relative z-10">
+                <div class="inline-flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-white/10 mb-3">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    <span class="text-[10px] font-bold tracking-widest uppercase text-white">Sorteo 9:00 PM</span>
+                </div>
+                <div class="flex justify-center items-baseline gap-1 mb-2">
+                    <span class="text-2xl text-brand-accent font-bold">S/</span>
+                    <span class="text-6xl font-black text-white drop-shadow-xl tracking-tighter">300</span>
+                </div>
+                <p class="text-sm font-medium text-slate-400">Ticket: <span class="text-white font-bold">S/ 5.00</span></p>
+                <div id="countdown" class="mt-4 font-mono text-xl text-white/80 bg-black/20 py-2 rounded-lg border border-white/5">--:--:--</div>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <div class="flex justify-between text-[10px] text-slate-400 mb-1 px-1">
+                <span>Estado de Venta</span>
+                <span id="sold-percentage" class="text-brand-accent font-bold">0%</span>
+            </div>
+            <div class="progress-bar-container">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+
+            <div class="flex flex-col gap-3 mb-4">
+                <div class="flex justify-between items-end px-1">
+                    <h3 class="text-white font-bold flex items-center gap-2">
+                        <i data-lucide="grid" class="w-5 h-5 text-brand-primary"></i> Elige tus Números
+                    </h3>
+                    <button onclick="luckyPick()" class="bg-brand-primary/20 hover:bg-brand-primary/30 text-brand-primary border border-brand-primary/30 text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold transition-colors active:scale-95">
+                        <i data-lucide="sparkles" class="w-3 h-3"></i> Azar
+                    </button>
+                </div>
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                    <input type="number" id="search-number" class="search-input" placeholder="Buscar número (ej. 22)..." oninput="searchNumber(this.value)">
+                </div>
+            </div>
+
+            <div id="grid-container" class="grid grid-cols-5 gap-2 select-none">
+                </div>
+        </div>
+
+        <div class="border-t border-white/10 pt-6 pb-4 space-y-4">
+            <h3 class="font-bold text-slate-200 px-1 text-sm uppercase tracking-wide">¿Cómo participar?</h3>
+            <div class="grid gap-3">
+                <div class="flex items-center gap-4 bg-slate-800/40 p-4 rounded-xl border border-white/5">
+                    <div class="bg-brand-primary/20 p-2.5 rounded-lg text-brand-primary"><i data-lucide="user-plus" class="w-5 h-5"></i></div>
+                    <div><h4 class="font-bold text-sm text-white">1. Registra tus datos</h4><p class="text-[11px] text-slate-400">Nombre y DNI para reclamar.</p></div>
+                </div>
+                <div class="flex items-center gap-4 bg-slate-800/40 p-4 rounded-xl border border-white/5">
+                    <div class="bg-brand-success/20 p-2.5 rounded-lg text-brand-success"><i data-lucide="smartphone" class="w-5 h-5"></i></div>
+                    <div><h4 class="font-bold text-sm text-white">2. Paga y Envía</h4><p class="text-[11px] text-slate-400">Yape/Plin al número indicado.</p></div>
+                </div>
+                <div class="flex items-center gap-4 bg-slate-800/40 p-4 rounded-xl border border-white/5">
+                    <div class="bg-brand-accent/20 p-2.5 rounded-lg text-brand-accent"><i data-lucide="trophy" class="w-5 h-5"></i></div>
+                    <div><h4 class="font-bold text-sm text-white">3. Gana S/300</h4><p class="text-[11px] text-slate-400">Sorteo 9:00 PM.</p></div>
+                </div>
+            </div>
+            <p class="text-center text-[10px] text-slate-600 mt-4">Rifa.Pe © 2025.</p>
+        </div>
+    </main>
+
+    <div id="payment-bar" class="fixed bottom-0 inset-x-0 glass-panel z-50 transform translate-y-full transition-transform duration-300">
+        <div class="max-w-md mx-auto p-4">
+            <div class="flex justify-between items-end mb-4">
+                <div>
+                    <p class="text-[10px] uppercase text-slate-400 font-bold tracking-wider mb-1">Tickets</p>
+                    <div class="flex flex-wrap gap-1" id="tickets-preview"></div>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] uppercase text-slate-400 font-bold tracking-wider mb-1">Total</p>
+                    <div class="flex items-baseline justify-end gap-1">
+                        <span class="text-sm text-brand-accent">S/</span>
+                        <span class="text-3xl font-black text-brand-accent leading-none" id="total-amount">0.00</span>
+                    </div>
+                </div>
+            </div>
+            <button onclick="openModal()" class="w-full bg-gradient-to-r from-brand-primary to-purple-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+                <span class="text-lg">CONTINUAR</span> <i data-lucide="chevron-right" class="w-6 h-6"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 z-[60] hidden bg-slate-900/95 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-800 w-full max-w-sm rounded-t-2xl sm:rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative transform transition-transform duration-300 translate-y-full sm:translate-y-0 max-h-[90vh] overflow-y-auto" id="modal-panel">
+            <button onclick="closeModal()" class="absolute top-4 right-4 bg-black/20 p-2 rounded-full text-white/70 hover:text-white z-20"><i data-lucide="x" class="w-5 h-5"></i></button>
+            
+            <div class="bg-gradient-to-br from-brand-primary to-purple-900 p-6 pt-10 text-center relative">
+                <div id="modal-header-step1"><h3 class="text-2xl font-bold text-white">Tus Datos</h3><p class="text-purple-200 text-sm">Registro rápido</p></div>
+                <div id="modal-header-step2" class="hidden"><h3 class="text-2xl font-bold text-white">Confirmar Pago</h3><p class="text-purple-200 text-sm">Último paso</p></div>
+            </div>
+
+            <div class="p-6">
+                <div id="step-1" class="space-y-4">
+                    <div class="relative"><i data-lucide="user" class="w-5 h-5 input-icon"></i><input type="text" id="input-name" class="input-dark" placeholder="Nombre Completo"></div>
+                    <div class="relative"><i data-lucide="credit-card" class="w-5 h-5 input-icon"></i><input type="tel" id="input-dni" class="input-dark" placeholder="DNI"></div>
+                    <div class="relative"><i data-lucide="phone" class="w-5 h-5 input-icon"></i><input type="tel" id="input-phone" class="input-dark" placeholder="WhatsApp" maxlength="9"></div>
+                    <div class="relative"><i data-lucide="map-pin" class="w-5 h-5 input-icon"></i><input type="text" id="input-address" class="input-dark" placeholder="Distrito"></div>
+                    <button onclick="goToPayment()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl mt-4 active:scale-[0.98] transition-transform flex justify-center gap-2">SIGUIENTE <i data-lucide="arrow-right" class="w-5 h-5"></i></button>
+                </div>
+
+                <div id="step-2" class="hidden space-y-5">
+                    <div class="bg-brand-danger/10 border border-brand-danger/30 rounded-xl p-3 flex flex-col items-center justify-center animate-pulse-fast">
+                        <p class="text-xs text-brand-danger font-bold uppercase mb-1">Reserva Expira en</p>
+                        <div class="text-3xl font-mono font-black text-brand-danger" id="payment-timer">10:00</div>
+                    </div>
+                    <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                        <span class="text-slate-400 text-sm">Monto a Yapear:</span>
+                        <span class="text-2xl font-black text-brand-accent" id="summary-total">S/ 0.00</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-white/10 relative overflow-hidden group">
+                        <div class="relative z-10 flex items-center gap-4">
+                            <div class="bg-[#742668] p-3 rounded-lg shrink-0 shadow-lg"><i data-lucide="qr-code" class="w-8 h-8 text-white"></i></div>
+                            <div class="flex-1">
+                                <p class="text-white font-bold text-sm">YAPE / PLIN</p>
+                                <p class="text-white font-mono text-2xl font-bold tracking-tight">955 028 410</p>
+                                <p class="text-[10px] text-slate-400 uppercase font-bold">Carlos López</p>
+                            </div>
+                            <button onclick="copyPhone()" class="bg-white/10 p-2 rounded-lg hover:bg-white/20"><i data-lucide="copy" class="w-5 h-5 text-brand-primary"></i></button>
+                        </div>
+                    </div>
+                    <div class="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg flex gap-3 items-start"><i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500 shrink-0 mt-0.5"></i><p class="text-xs text-amber-200">Envía la captura a <strong>este mismo número</strong> para validar.</p></div>
+                    <div class="flex gap-3 pt-2">
+                        <button onclick="backToForm()" class="px-4 bg-slate-700 text-white rounded-xl font-bold text-sm"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                        <button onclick="sendToWhatsApp()" class="flex-1 bg-[#25D366] hover:bg-[#1ebd59] text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"><i data-lucide="message-circle" class="w-5 h-5"></i> ENVIAR CAPTURA</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-modal" class="fixed inset-0 z-[80] hidden bg-black/90 flex items-center justify-center p-4">
+        <div class="bg-slate-900 w-full max-w-xs rounded-xl border border-red-500/50 p-6 space-y-4 shadow-2xl shadow-red-900/30 transform transition-all animate-ticket-appear">
+            
+            <div class="golden-ticket flex shadow-xl transform rotate-1 hover:rotate-0 transition-transform duration-300">
+                <div class="flex-1 p-4 flex flex-col justify-center items-center text-center">
+                    <p class="text-[8px] font-black uppercase tracking-widest opacity-60">Rifa.Pe Official</p>
+                    <p class="text-5xl font-black tracking-tighter leading-none" id="admin-ticket-display">#000</p>
+                    <p class="text-[10px] font-bold mt-1 opacity-80">Sorteo Diario</p>
+                </div>
+                <div class="golden-ticket-stub w-12 flex items-center justify-center">
+                    <span class="block -rotate-90 text-[8px] font-bold opacity-50 tracking-widest">ADMIT ONE</span>
+                </div>
+            </div>
+
+            <div id="admin-view-sell" class="hidden space-y-4">
+                <p class="text-center text-slate-300 text-xs uppercase font-bold tracking-widest">Registrar Nuevo Cliente</p>
+                <div class="relative">
+                    <i data-lucide="user" class="w-5 h-5 input-icon text-red-400"></i>
+                    <input type="text" id="admin-input-buyer" class="input-dark border-red-900 focus:border-red-500 bg-red-900/10 placeholder-red-300/30" placeholder="Nombre del Comprador">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="closeAdminModal()" class="w-1/3 bg-slate-800 text-slate-400 py-3 rounded-lg text-sm font-bold hover:bg-slate-700">Cancelar</button>
+                    <button id="btn-admin-save" onclick="adminConfirmSale()" class="w-2/3 bg-red-600 hover:bg-red-500 text-white py-3 rounded-lg text-sm font-bold flex justify-center items-center gap-2 shadow-lg shadow-red-900/50 active:scale-95 transition-all">
+                        <i data-lucide="save" class="w-4 h-4"></i> VENDER
+                    </button>
+                </div>
+            </div>
+
+            <div id="admin-view-info" class="hidden space-y-4">
+                <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-left">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-slate-500 text-[10px] uppercase font-bold mb-1">Pertenece a:</p>
+                            <p class="text-white font-bold text-xl truncate" id="admin-info-name">...</p>
+                        </div>
+                        <div class="bg-green-500/20 p-1 rounded">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closeAdminModal()" class="w-1/3 bg-slate-800 text-slate-400 py-3 rounded-lg text-sm font-bold">Cerrar</button>
+                    <button onclick="adminReleaseTicket()" class="w-2/3 bg-slate-700 hover:bg-red-900/50 text-red-400 border border-red-900/30 hover:border-red-500 py-3 rounded-lg text-sm font-bold flex justify-center gap-2 transition-colors">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> LIBERAR
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 bg-slate-800 border border-white/20 text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-3 z-[70] transition-all duration-300 opacity-0 translate-y-[-20px] pointer-events-none w-max"><i data-lucide="info" class="w-5 h-5 text-brand-primary"></i><span class="text-sm font-medium" id="toast-message">Info</span></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, setDoc, serverTimestamp, deleteDoc, enableNetwork } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // APP ID ORIGINAL
+        const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'rifa-pe-v12-classic';
+        const CONFIG = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        const STATE = {
+            selected: [],
+            soldData: {},
+            price: 5,
+            max: 300,
+            user: null, 
+            db: null,
+            isAdmin: false,
+            adminClicks: 0,
+            activeAdminTicket: null,
+            isMuted: false
+        };
+
+        const UI = {
+            grid: document.getElementById('grid-container'),
+            bar: document.getElementById('payment-bar'),
+            total: document.getElementById('total-amount'),
+            preview: document.getElementById('tickets-preview'),
+            modal: document.getElementById('modal'),
+            modalPanel: document.getElementById('modal-panel'),
+            // Admin Modal
+            adminModal: document.getElementById('admin-modal'),
+            adminTicketDisplay: document.getElementById('admin-ticket-display'),
+            adminViewSell: document.getElementById('admin-view-sell'),
+            adminViewInfo: document.getElementById('admin-view-info'),
+            adminInputBuyer: document.getElementById('admin-input-buyer'),
+            adminInfoName: document.getElementById('admin-info-name'),
+            btnAdminSave: document.getElementById('btn-admin-save'),
+            // Admin Dashboard
+            adminBar: document.getElementById('admin-bar'),
+            adminSoldCount: document.getElementById('admin-sold-count'),
+            adminRevenue: document.getElementById('admin-revenue'),
+            // Sound
+            muteIcon: document.getElementById('mute-icon'),
+            sfxPop: document.getElementById('sfx-pop'),
+            sfxWin: document.getElementById('sfx-win')
+        };
+
+        // --- SISTEMA DE GUARDADO HÍBRIDO (LOCAL STORAGE FALLBACK) ---
+        // Esta función intenta guardar en DB, si falla, guarda en LocalStorage.
+        async function robustSave(ticketNum, buyerName) {
+            const data = { 
+                status: 'sold', 
+                buyerName: buyerName, 
+                updatedBy: 'admin', 
+                timestamp: Date.now() 
+            };
+            
+            // 1. Guardado Local (Inmediato)
+            try {
+                const localDB = JSON.parse(localStorage.getItem('rifa_local_db') || '{}');
+                localDB[ticketNum] = data;
+                localStorage.setItem('rifa_local_db', JSON.stringify(localDB));
+            } catch(e) { console.error("Local save error", e); }
+
+            // 2. Intentar Firebase (Si hay config)
+            if (STATE.db) {
+                try {
+                    const ref = doc(STATE.db, `artifacts/${APP_ID}/public/data/tickets`, ticketNum.toString());
+                    await setDoc(ref, { ...data, timestamp: serverTimestamp() });
+                    return true;
+                } catch (e) {
+                    console.warn("Firebase save failed, using local fallback", e);
+                    // No lanzamos error al usuario, porque ya guardamos en local
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        async function robustDelete(ticketNum) {
+            // Borrar local
+            const localDB = JSON.parse(localStorage.getItem('rifa_local_db') || '{}');
+            delete localDB[ticketNum];
+            localStorage.setItem('rifa_local_db', JSON.stringify(localDB));
+
+            // Borrar Firebase
+            if(STATE.db) {
+                try {
+                    const ref = doc(STATE.db, `artifacts/${APP_ID}/public/data/tickets`, ticketNum.toString());
+                    await deleteDoc(ref);
+                } catch(e) {}
+            }
+        }
+
+        // --- INICIALIZACIÓN ---
+        function initGrid() {
+            let html = '';
+            for (let i = 1; i <= STATE.max; i++) {
+                html += `<button id="btn-${i}" class="btn-number" onclick="handleTicketClick(${i})">${i.toString().padStart(3, '0')}</button>`;
+            }
+            UI.grid.innerHTML = html;
+            // Cargar datos locales al inicio
+            syncFromLocal();
+        }
+
+        function syncFromLocal() {
+            const localDB = JSON.parse(localStorage.getItem('rifa_local_db') || '{}');
+            Object.keys(localDB).forEach(key => {
+                const n = parseInt(key);
+                STATE.soldData[n] = localDB[key];
+                const btn = document.getElementById(`btn-${n}`);
+                if(btn) btn.className = "btn-number btn-sold";
+            });
+            updateStats();
+        }
+
+        async function initApp() {
+            lucide.createIcons();
+            startCountdown();
+            initGrid();
+
+            if (!CONFIG) return; // Si no hay config, funciona 100% local
+            
+            try {
+                const app = initializeApp(CONFIG);
+                STATE.db = getFirestore(app);
+                const auth = getAuth(app);
+    
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        STATE.user = user;
+                        document.getElementById('status-dot').className = "w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
+                        startLiveSync();
+                    } else {
+                        signInAnonymously(auth).catch(console.error);
+                    }
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        function startLiveSync() {
+            if(!STATE.db) return;
+            onSnapshot(collection(STATE.db, `artifacts/${APP_ID}/public/data/tickets`), (snapshot) => {
+                snapshot.docChanges().forEach(change => {
+                    const data = change.doc.data();
+                    const n = parseInt(change.doc.id);
+                    const btn = document.getElementById(`btn-${n}`);
+                    
+                    if (change.type === "added" || change.type === "modified") {
+                        if (data.status === 'sold') {
+                            STATE.soldData[n] = { name: data.buyerName || 'Cliente' };
+                            if(btn) btn.className = "btn-number btn-sold";
+                            
+                            // Actualizar local backup también
+                            const localDB = JSON.parse(localStorage.getItem('rifa_local_db') || '{}');
+                            localDB[n] = STATE.soldData[n];
+                            localStorage.setItem('rifa_local_db', JSON.stringify(localDB));
+                        }
+                    } else if (change.type === "removed") {
+                        delete STATE.soldData[n];
+                        if(btn) btn.className = "btn-number";
+                        // Borrar local backup
+                        const localDB = JSON.parse(localStorage.getItem('rifa_local_db') || '{}');
+                        delete localDB[n];
+                        localStorage.setItem('rifa_local_db', JSON.stringify(localDB));
+                    }
+                });
+                STATE.selected = STATE.selected.filter(n => !STATE.soldData[n]);
+                updateBar();
+                updateStats();
+            });
+        }
+
+        // --- INTERACCIÓN ---
+        window.handleTicketClick = (num) => {
+            // ADMIN
+            if (STATE.isAdmin) {
+                STATE.activeAdminTicket = num;
+                UI.adminTicketDisplay.textContent = `#${num.toString().padStart(3,'0')}`;
+                
+                if (STATE.soldData[num]) {
+                    UI.adminInfoName.textContent = STATE.soldData[num].name;
+                    UI.adminViewSell.classList.add('hidden');
+                    UI.adminViewInfo.classList.remove('hidden');
+                } else {
+                    UI.adminInputBuyer.value = '';
+                    UI.adminViewInfo.classList.add('hidden');
+                    UI.adminViewSell.classList.remove('hidden');
+                    UI.btnAdminSave.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> VENDER`;
+                    setTimeout(() => UI.adminInputBuyer.focus(), 100);
+                }
+                UI.adminModal.classList.remove('hidden');
+                return;
+            }
+
+            // USUARIO
+            if (STATE.soldData[num]) { playSound('error'); return; }
+            const idx = STATE.selected.indexOf(num);
+            const btn = document.getElementById(`btn-${num}`);
+            btn.classList.remove('btn-highlight');
+
+            if (idx > -1) {
+                STATE.selected.splice(idx, 1);
+                btn.className = "btn-number";
+            } else {
+                STATE.selected.push(num);
+                btn.className = "btn-number btn-selected";
+                playSound('pop');
+            }
+            updateBar();
+        };
+
+        // --- ACCIONES ADMIN (AHORA HÍBRIDAS) ---
+        window.adminConfirmSale = async () => {
+            const buyer = UI.adminInputBuyer.value.trim() || 'Venta Manual';
+            const num = STATE.activeAdminTicket;
+            
+            // UI Update Inmediato
+            UI.btnAdminSave.innerHTML = "GUARDANDO...";
+            const btnGrid = document.getElementById(`btn-${num}`);
+            if(btnGrid) btnGrid.className = "btn-number btn-sold";
+            STATE.soldData[num] = { name: buyer }; // Update memory immediately
+
+            // Guardado Robusto (Local + DB)
+            await robustSave(num, buyer);
+            
+            UI.adminModal.classList.add('hidden');
+            showToast(`✅ Venta guardada: #${num}`);
+            playSound('win');
+            confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 }, disableForReducedMotion: true });
+            updateStats();
+        };
+
+        window.adminReleaseTicket = async () => {
+            const num = STATE.activeAdminTicket;
+            if(!num) return;
+            
+            await robustDelete(num);
+            
+            delete STATE.soldData[num];
+            const btn = document.getElementById(`btn-${num}`);
+            if(btn) btn.className = "btn-number";
+            
+            UI.adminModal.classList.add('hidden');
+            showToast(`Ticket #${num} Liberado`);
+            updateStats();
+        };
+
+        // --- EXTRAS ---
+        window.adminTrigger = () => {
+            STATE.adminClicks++;
+            if(STATE.adminClicks === 5) {
+                STATE.isAdmin = !STATE.isAdmin;
+                STATE.adminClicks = 0;
+                if(STATE.isAdmin) {
+                    UI.adminBar.classList.remove('hidden');
+                    document.body.classList.add('admin-mode-active');
+                    showToast("👑 MODO ADMIN");
+                    playSound('win');
+                } else {
+                    UI.adminBar.classList.add('hidden');
+                    document.body.classList.remove('admin-mode-active');
+                    showToast("🔒 MODO USUARIO");
+                }
+            }
+        };
+
+        window.toggleMute = () => {
+            STATE.isMuted = !STATE.isMuted;
+            if(STATE.isMuted) { UI.muteIcon.classList.add('text-red-500'); showToast("Silencio Activado"); } 
+            else { UI.muteIcon.classList.remove('text-red-500'); showToast("Sonido Activado"); }
+        };
+
+        function playSound(type) {
+            if(STATE.isMuted) return;
+            try {
+                const audio = type === 'pop' ? UI.sfxPop : UI.sfxWin;
+                audio.currentTime = 0; 
+                audio.play();
+            } catch(e) {}
+        }
+
+        function updateStats() {
+            const count = Object.keys(STATE.soldData).length;
+            const percent = Math.round((count / STATE.max) * 100);
+            document.getElementById('progress-fill').style.width = `${percent}%`;
+            document.getElementById('sold-percentage').textContent = `${percent}% Vendido`;
+            UI.adminSoldCount.textContent = count;
+            UI.adminRevenue.textContent = (count * STATE.price).toFixed(2);
+        }
+        
+        // --- SEARCH ---
+        window.searchNumber = (val) => {
+            const num = parseInt(val);
+            if (!num || num < 1 || num > STATE.max) return;
+            document.querySelectorAll('.btn-highlight').forEach(el => el.classList.remove('btn-highlight'));
+            const btn = document.getElementById(`btn-${num}`);
+            if (btn) {
+                btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                btn.classList.add('btn-highlight');
+                setTimeout(() => btn.classList.remove('btn-highlight'), 2000);
+            }
+        };
+
+        window.luckyPick = () => {
+            STATE.selected.forEach(n => {
+                const btn = document.getElementById(`btn-${n}`);
+                if(btn && !STATE.soldData[n]) btn.className = "btn-number";
+            });
+            STATE.selected = [];
+            const available = [];
+            for(let i=1; i<=STATE.max; i++) { if(!STATE.soldData[i]) available.push(i); }
+            if(available.length < 3) { showToast("Pocos tickets disponibles"); return; }
+            for(let k=0; k<3; k++) {
+                const randIndex = Math.floor(Math.random() * available.length);
+                const num = available[randIndex];
+                STATE.selected.push(num);
+                const btn = document.getElementById(`btn-${num}`);
+                if(btn) btn.className = "btn-number btn-selected";
+                available.splice(randIndex, 1);
+            }
+            playSound('pop');
+            updateBar();
+            showToast("✨ ¡3 Números Mágicos!");
+        };
+
+        function updateBar() {
+            const count = STATE.selected.length;
+            UI.total.textContent = (count * STATE.price).toFixed(2);
+            let dots = '';
+            STATE.selected.slice(0, 6).forEach(() => dots += `<div class="w-1.5 h-1.5 rounded-full bg-brand-primary"></div>`);
+            if (count > 6) dots += `<span class="text-[8px] text-slate-500 self-center">+${count-6}</span>`;
+            UI.preview.innerHTML = dots;
+            count > 0 ? UI.bar.classList.remove('translate-y-full') : UI.bar.classList.add('translate-y-full');
+        }
+
+        // --- MODALS ---
+        window.openModal = () => {
+            if (STATE.selected.length < 3) { showToast(`Elige mínimo 3 tickets`); return; }
+            document.getElementById('modal-header-step1').classList.remove('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+            document.getElementById('modal-header-step2').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            UI.modal.classList.remove('hidden');
+            setTimeout(() => UI.modalPanel.classList.remove('translate-y-full'), 10);
+        };
+
+        window.closeModal = () => {
+            UI.modalPanel.classList.add('translate-y-full');
+            setTimeout(() => UI.modal.classList.add('hidden'), 300);
+        };
+        
+        window.closeAdminModal = () => UI.adminModal.classList.add('hidden');
+
+        window.goToPayment = () => {
+            if (!document.getElementById('input-name').value.trim()) { showToast("Completa tu nombre"); return; }
+            document.getElementById('summary-total').textContent = `S/ ${(STATE.selected.length * STATE.price).toFixed(2)}`;
+            document.getElementById('modal-header-step1').classList.add('hidden');
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('modal-header-step2').classList.remove('hidden');
+            document.getElementById('step-2').classList.remove('hidden');
+        };
+
+        window.backToForm = () => {
+            document.getElementById('modal-header-step2').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('modal-header-step1').classList.remove('hidden');
+            document.getElementById('step-1').classList.remove('hidden');
+        };
+
+        window.sendToWhatsApp = () => {
+            const name = document.getElementById('input-name').value;
+            const dni = document.getElementById('input-dni').value;
+            const total = (STATE.selected.length * STATE.price).toFixed(2);
+            const tickets = STATE.selected.map(n => n.toString().padStart(3,'0')).join(', ');
+            
+            const msg = `Hola! 👋 Confirmo compra en Rifa.Pe\n👤 *${name}* (DNI: ${dni})\n🎟️ *TICKETS:* ${tickets}\n💰 *TOTAL:* S/ ${total}\nAdjunto captura 👇`;
+            
+            window.open(`https://wa.me/51955028410?text=${encodeURIComponent(msg)}`, '_blank');
+            closeModal();
+            STATE.selected = []; 
+            document.querySelectorAll('.btn-selected').forEach(b => b.className = 'btn-number'); 
+            updateBar();
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        };
+        
+        window.copyPhone = () => { navigator.clipboard.writeText("955028410"); showToast("Copiado!"); };
+
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast'); document.getElementById('toast-message').textContent = msg;
+            t.classList.remove('opacity-0', 'translate-y-[-20px]');
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-[-20px]'), 3000);
+        };
+
+        function startCountdown() {
+            const el = document.getElementById('countdown');
+            setInterval(() => {
+                const now = new Date(); let t = new Date(); t.setHours(21,0,0,0);
+                if(now > t) t.setDate(t.getDate()+1);
+                const d = t - now;
+                el.textContent = `${Math.floor(d/3600000).toString().padStart(2,'0')}h ${Math.floor((d%3600000)/60000).toString().padStart(2,'0')}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s`;
+            }, 1000);
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
+    
+  </body>
+  
+</html>
